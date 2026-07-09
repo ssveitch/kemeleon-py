@@ -1,0 +1,39 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "kemeleon-py"
+version = "0.1.0"
+requires-python = ">= 3.9"
+description = "A pure Python implementation of Kemeleon encodings for ML-KEM"
+readme = "README.md"
+classifiers = [
+    "Topic :: Security :: Cryptography",
+    "Programming Language :: Python :: 3",
+]
+license = "MIT OR Apache-2.0"
+dependencies = [
+    "pycryptodome",
+]
+
+[project.optional-dependencies]
+dev = [
+    "kyber-py>=1.2.0",
+    "pytest",
+]
+
+[project.urls]
+Homepage = "https://github.com/ssveitch/kemeleon-py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/kemeleon.py"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+
+[tool.black]
+line-length = 88
+
+[tool.ruff.lint]
+ignore = ["E741"]
