@@ -1,7 +1,7 @@
 # Kemeleon Python Implementation
 
 > [!CAUTION]
-> This is a reference implementation and has not been designed to be secure
+> This implementation has not been designed to be secure
 > against any form of side-channel attack. 
 
 This repository contains a python implementation of Kemeleon encodings, as 
@@ -21,7 +21,7 @@ No cryptographic guarantees are made of this work.
 
 ## Using kemeleon-py
 
-This package isn't published on PyPI; install it directly from GitHub:
+This package can be installed directly from GitHub:
 ```
 pip install "kemeleon-py @ git+https://github.com/ssveitch/kemeleon-py.git"
 ```
