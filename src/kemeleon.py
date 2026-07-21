@@ -14,7 +14,8 @@ from Crypto.Hash import SHAKE256
 
 _Q = 3329                   # ML-KEM modulus
 _N = 256                    # polynomial degree
-_Q_POW_N = _Q ** _N 
+_Q_POW_N = _Q ** _N
+_D_T = 12                    # bit-width for uncompressed (mod-q) coefficients
 _B = 2996                    # b = (q^n - 1).bit_length() = 2996
 _VECTOR_BITS = 3072          # b + t = 3072 (384 bytes, byte-aligned), t = 76.
 _VECTOR_BYTES = _VECTOR_BITS // 8  # 384
@@ -61,7 +62,7 @@ def _randbelow(n: int, xof) -> int:
 def _decode_poly_coeffs(data: bytes, d: int) -> list[int]:
     """Decode 32*d bytes into 256 coefficients with d bits each (ML-KEM byte format)."""
     assert len(data) == 32 * d
-    m = _Q if d == 12 else (1 << d)
+    m = _Q if d == _D_T else (1 << d)
     b_int = int.from_bytes(data, "little")
     mask = (1 << d) - 1
     coeffs = [0 for _ in range(_N)]
@@ -97,13 +98,13 @@ def _vector_encode(coeffs: list[int], xof) -> bytes:
     max_m = ((1 << _VECTOR_BITS) - r) // q_pow
     m = _randbelow(max_m + 1, xof)
     r += m * q_pow
-    return r.to_bytes(_VECTOR_BYTES, "little")
+    return r.to_bytes(_VECTOR_BYTES, "big")
 
 
 def _vector_decode(data: bytes) -> list[int]:
     """VectorDecode: decode 384 bytes into n=256 coefficients in [0, q-1]."""
     assert len(data) == _VECTOR_BYTES
-    r = int.from_bytes(data, "little") % _Q_POW_N
+    r = int.from_bytes(data, "big") % _Q_POW_N
     coeffs = [0 for _ in range(_N)]
     for i in range(_N):
         coeffs[i] = r % _Q
@@ -168,11 +169,10 @@ def _vector_encode_r(
     if (r >> (num_bits - 1)) & 1:
         return None
 
-    unused = num_bytes * 8 - num_bits
-    if unused > 0:
-        r |= _randbelow(1 << unused, xof) << num_bits
+    unused = num_bytes * 8 - num_bits + 1
+    r |= _randbelow(1 << unused, xof) << (num_bits - 1)
 
-    return r.to_bytes(num_bytes, "little")
+    return r.to_bytes(num_bytes, "big")
 
 
 def _vector_decode_r(data: bytes, k: int, num_bits: int, num_bytes: int) -> list[int]:
@@ -180,7 +180,7 @@ def _vector_decode_r(data: bytes, k: int, num_bits: int, num_bytes: int) -> list
     k_n = k * _N
     assert len(data) == num_bytes
 
-    r = int.from_bytes(data, "little") & ((1 << num_bits) - 1)
+    r = int.from_bytes(data, "big") & ((1 << (num_bits - 1)) - 1)
     coeffs = [0 for _ in range(k_n)]
     for i in range(k_n):
         coeffs[i] = r % _Q
@@ -230,7 +230,7 @@ class Kemeleon:
         xof = _new_xof()
         parts = [b""] * self.k
         for i in range(self.k):
-            coeffs = _decode_poly_coeffs(t_bytes[384 * i : 384 * (i + 1)], 12)
+            coeffs = _decode_poly_coeffs(t_bytes[384 * i : 384 * (i + 1)], _D_T)
             parts[i] = _vector_encode(coeffs, xof)
         return b"".join(parts) + rho
 
@@ -247,7 +247,7 @@ class Kemeleon:
         t_bytes = b""
         for i in range(self.k):
             coeffs = _vector_decode(eek[_VECTOR_BYTES * i : _VECTOR_BYTES * (i + 1)])
-            t_bytes += _encode_poly_coeffs(coeffs, 12)
+            t_bytes += _encode_poly_coeffs(coeffs, _D_T)
         return t_bytes + rho
 
     def encode_ctxt(self, c: bytes) -> bytes:
@@ -354,7 +354,7 @@ class KemeleonR:
         flat: list[int] = [0] * (self.k * _N)
         for i in range(self.k):
             flat[_N * i : _N * (i + 1)] = _decode_poly_coeffs(
-                t_bytes[384 * i : 384 * (i + 1)], 12
+                t_bytes[384 * i : 384 * (i + 1)], _D_T
             )
 
         xof = _new_xof()
@@ -377,7 +377,7 @@ class KemeleonR:
 
         t_bytes = b""
         for i in range(self.k):
-            t_bytes += _encode_poly_coeffs(flat[_N * i : _N * (i + 1)], 12)
+            t_bytes += _encode_poly_coeffs(flat[_N * i : _N * (i + 1)], _D_T)
         return t_bytes + rho
 
     def encode_ctxt(self, c: bytes) -> Optional[bytes]:
