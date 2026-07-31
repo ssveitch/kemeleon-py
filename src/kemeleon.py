@@ -95,7 +95,7 @@ def _vector_encode(coeffs: list[int], xof) -> bytes:
         q_pow *= _Q
     # q_pow == q^n
     # m in [0, floor((2^3072 - r) / q^n)]
-    max_m = ((1 << _VECTOR_BITS) - r) // q_pow
+    max_m = ((1 << _VECTOR_BITS) - 1 - r) // q_pow
     m = _randbelow(max_m + 1, xof)
     r += m * q_pow
     return r.to_bytes(_VECTOR_BYTES, "big")
