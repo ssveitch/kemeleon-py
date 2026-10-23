@@ -98,13 +98,13 @@ def _vector_encode(coeffs: list[int], xof) -> bytes:
     max_m = ((1 << _VECTOR_BITS) - 1 - r) // q_pow
     m = _randbelow(max_m + 1, xof)
     r += m * q_pow
-    return r.to_bytes(_VECTOR_BYTES, "big")
+    return r.to_bytes(_VECTOR_BYTES, "little")
 
 
 def _vector_decode(data: bytes) -> list[int]:
     """VectorDecode: decode 384 bytes into n=256 coefficients in [0, q-1]."""
     assert len(data) == _VECTOR_BYTES
-    r = int.from_bytes(data, "big") % _Q_POW_N
+    r = int.from_bytes(data, "little") % _Q_POW_N
     coeffs = [0 for _ in range(_N)]
     for i in range(_N):
         coeffs[i] = r % _Q
@@ -172,7 +172,7 @@ def _vector_encode_r(
     unused = num_bytes * 8 - num_bits + 1
     r |= _randbelow(1 << unused, xof) << (num_bits - 1)
 
-    return r.to_bytes(num_bytes, "big")
+    return r.to_bytes(num_bytes, "little")
 
 
 def _vector_decode_r(data: bytes, k: int, num_bits: int, num_bytes: int) -> list[int]:
@@ -180,7 +180,7 @@ def _vector_decode_r(data: bytes, k: int, num_bits: int, num_bytes: int) -> list
     k_n = k * _N
     assert len(data) == num_bytes
 
-    r = int.from_bytes(data, "big") & ((1 << (num_bits - 1)) - 1)
+    r = int.from_bytes(data, "little") & ((1 << (num_bits - 1)) - 1)
     coeffs = [0 for _ in range(k_n)]
     for i in range(k_n):
         coeffs[i] = r % _Q
